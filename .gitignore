@@ -1,0 +1,10 @@
+/*.iml
+/*.ipr
+/*.iws
+/.idea
+/.settings
+/.project
+./build
+### Mac
+.DS_Store
+*/.DS_Store
