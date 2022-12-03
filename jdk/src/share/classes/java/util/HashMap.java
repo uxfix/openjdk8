@@ -453,6 +453,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             throw new IllegalArgumentException("Illegal load factor: " +
                                                loadFactor);
         this.loadFactor = loadFactor;
+        // 这里的初始容量并不是由调用者指定多少就是多少
+        // 而是返回大于输入参数且最近的2的整数次幂的数。比设定10，则实际设定16
         this.threshold = tableSizeFor(initialCapacity);
     }
 
@@ -464,6 +466,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @throws IllegalArgumentException if the initial capacity is negative.
      */
     public HashMap(int initialCapacity) {
+        // 可用自己指定初始容量，但负载因子使用默认的 0.75f
         this(initialCapacity, DEFAULT_LOAD_FACTOR);
     }
 
@@ -472,6 +475,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * (16) and the default load factor (0.75).
      */
     public HashMap() {
+        // 使用默认的负载因子 0.75f
         this.loadFactor = DEFAULT_LOAD_FACTOR; // all other fields defaulted
     }
 
@@ -485,7 +489,9 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @throws  NullPointerException if the specified map is null
      */
     public HashMap(Map<? extends K, ? extends V> m) {
+        // 使用默认的负载因子 0.75f
         this.loadFactor = DEFAULT_LOAD_FACTOR;
+        // 遍历待合并 m 集合的元素添加到自身
         putMapEntries(m, false);
     }
 
@@ -497,9 +503,11 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * true (relayed to method afterNodeInsertion).
      */
     final void putMapEntries(Map<? extends K, ? extends V> m, boolean evict) {
+        // 获取要合并的 Map 集合容量
         int s = m.size();
         if (s > 0) {
             if (table == null) { // pre-size
+                // 计算容量
                 float ft = ((float)s / loadFactor) + 1.0F;
                 int t = ((ft < (float)MAXIMUM_CAPACITY) ?
                          (int)ft : MAXIMUM_CAPACITY);
@@ -508,6 +516,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             }
             else if (s > threshold)
                 resize();
+            // 遍历要合并的 Map 集合调用 putVal 方法一个个添加到自身集合来完成合并
             for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
                 K key = e.getKey();
                 V value = e.getValue();
@@ -608,6 +617,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      *         previously associated <tt>null</tt> with <tt>key</tt>.)
      */
     public V put(K key, V value) {
+        // onlyIfAbsent 表示当Key一样冲突时，是否决定覆盖
+        // evict 这个参数 HashMap 并没有使用到，是留给子类如 LinkedHashMap 使用的
         return putVal(hash(key), key, value, false, true);
     }
 
@@ -623,44 +634,65 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      */
     final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
                    boolean evict) {
-        Node<K,V>[] tab; Node<K,V> p; int n, i;
+        Node<K,V>[] tab; // 临时变量引用哈希数组
+        Node<K,V> p; // 临时变量引用当前节点对象
+        int n, i; // n=临时变量哈希数组长度 i=临时变量当前节点哈希数组索引位置
         if ((tab = table) == null || (n = tab.length) == 0)
+            // 如果哈希数组等于空或者哈希数组长度为0，则进行扩容初始化
+            // 注意这里已经完成了对临时变量 tab n 的赋值
             n = (tab = resize()).length;
         if ((p = tab[i = (n - 1) & hash]) == null)
+            // 计算哈希索引位置并完成 p i 的赋值
+            // 如果发现当前位置为 null，说明没有发生冲突
+            // 直接创建一个新节点保存到当前位置
             tab[i] = newNode(hash, key, value, null);
         else {
-            Node<K,V> e; K k;
+            // 如果代码运行到这里，说明该哈希数组位置已经有值，可能发生冲突，也有可能会发生覆盖
+            Node<K,V> e; // 临时变量引用Key一样的节点
+            K k; // 临时变量引用已存在的节点 Key
             if (p.hash == hash &&
                 ((k = p.key) == key || (key != null && key.equals(k))))
+                // 如果hash一致 并且 key 的 equals 方法也一致，则认为这是同一个 key
                 e = p;
             else if (p instanceof TreeNode)
+                // 冲突节点是红黑树，将节点强制转换成红黑树后调用 putTreeVal 方法进行插入
                 e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
             else {
-                for (int binCount = 0; ; ++binCount) {
+                // 冲突的节点是一个链表
+                for (int binCount = 0; ; ++binCount) { // binCount 统计当前的链表长度
                     if ((e = p.next) == null) {
+                        // 获取节点的下一个节点，如果等null，这就是新节点保存的位置
                         p.next = newNode(hash, key, value, null);
                         if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st
-                            treeifyBin(tab, hash);
+                            treeifyBin(tab, hash); // 如果链表长度超过8 转红黑树
                         break;
                     }
                     if (e.hash == hash &&
                         ((k = e.key) == key || (key != null && key.equals(k))))
                         break;
+                    // 如果hash一致 并且 key 的 equals 方法也一致，则认为这是同一个 key
+                    // 跳出循环，已经找到要保存的位置
                     p = e;
                 }
             }
-            if (e != null) { // existing mapping for key
+            if (e != null) {
+                // 通常来说，当 e 不等于 null 的时候
+                // 就是新加入的 key 找到了与已存在的 key 一样的节点
+                // 可能需要发生值覆盖的情况
                 V oldValue = e.value;
                 if (!onlyIfAbsent || oldValue == null)
+                    // 只有当 onlyIfAbsent 等于 flase 或者旧值等于 null 的时候才会发生覆盖
                     e.value = value;
-                afterNodeAccess(e);
+                afterNodeAccess(e); // 留给子类重写的扩展机制
+                // 结束返回旧值
                 return oldValue;
             }
         }
         ++modCount;
         if (++size > threshold)
+            // 最后对Map集合元素数量加一，判断是否达到了扩容阈值
             resize();
-        afterNodeInsertion(evict);
+        afterNodeInsertion(evict);// 留给子类重写的扩展机制
         return null;
     }
 
