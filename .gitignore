@@ -8,3 +8,5 @@
 ### Mac
 .DS_Store
 */.DS_Store
+a.out
+compile_commands.json
