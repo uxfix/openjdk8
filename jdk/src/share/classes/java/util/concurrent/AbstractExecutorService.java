@@ -108,7 +108,9 @@ public abstract class AbstractExecutorService implements ExecutorService {
      */
     public Future<?> submit(Runnable task) {
         if (task == null) throw new NullPointerException();
+        // 使用适配器模式对 Runnable 接口进行适配改造
         RunnableFuture<Void> ftask = newTaskFor(task, null);
+        // 执行任务
         execute(ftask);
         return ftask;
     }
@@ -119,6 +121,7 @@ public abstract class AbstractExecutorService implements ExecutorService {
      */
     public <T> Future<T> submit(Runnable task, T result) {
         if (task == null) throw new NullPointerException();
+        // 这里为 Runnable 指定了参数的为返回值
         RunnableFuture<T> ftask = newTaskFor(task, result);
         execute(ftask);
         return ftask;

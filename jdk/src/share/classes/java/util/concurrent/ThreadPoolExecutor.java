@@ -1304,14 +1304,25 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             maximumPoolSize <= 0 ||
             maximumPoolSize < corePoolSize ||
             keepAliveTime < 0)
+            // 核心线程数小于0抛异常
+            // 最大线程数小于等于0抛异常
+            // 最大线程数小于核心线程数抛异常
+            // 空闲线程数存活时间值小于0抛异常
             throw new IllegalArgumentException();
         if (workQueue == null || threadFactory == null || handler == null)
+            // 如果阻塞队列,或者线程名字工厂,拒绝策略处理器等于NULL,抛异常
             throw new NullPointerException();
+        // 核心线程数
         this.corePoolSize = corePoolSize;
+        // 最大线程数
         this.maximumPoolSize = maximumPoolSize;
+        //  阻塞工作队列
         this.workQueue = workQueue;
+        // 将时间转换为纳秒
         this.keepAliveTime = unit.toNanos(keepAliveTime);
+        // 线程名字工厂
         this.threadFactory = threadFactory;
+        // 拒绝策略处理器
         this.handler = handler;
     }
 
@@ -1340,6 +1351,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
          * task.  The call to addWorker atomically checks runState and
          * workerCount, and so prevents false alarms that would add
          * threads when it shouldn't, by returning false.
+         * 
          *
          * 2. If a task can be successfully queued, then we still need
          * to double-check whether we should have added a thread
@@ -1353,7 +1365,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
          * and so reject the task.
          */
         int c = ctl.get();
-        if (workerCountOf(c) < corePoolSize) {
+        if (workerCountOf(c) < corePoolSize) { // 如果当前活跃线程数小于核心线程数
             if (addWorker(command, true))
                 return;
             c = ctl.get();
