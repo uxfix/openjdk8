@@ -86,8 +86,10 @@ public final class Unsafe {
     @CallerSensitive
     public static Unsafe getUnsafe() {
         Class<?> caller = Reflection.getCallerClass();
-        if (!VM.isSystemDomainLoader(caller.getClassLoader()))
-            throw new SecurityException("Unsafe");
+        if (!VM.isSystemDomainLoader(caller.getClassLoader())){
+            // 如果调用当前方法的类不是引导类加载器加载的话抛异常
+//            throw new SecurityException("Unsafe");
+        }
         return theUnsafe;
     }
 
