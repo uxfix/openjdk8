@@ -814,12 +814,16 @@ public abstract class AbstractQueuedSynchronizer
             /*
              * This node has already set status asking a release
              * to signal it, so it can safely park.
+             * 检查当前要阻塞的线程节点的前置节点的 waitStatus 是否等于 SIGNAL
+             * 即代表前置节点将来会unpark唤醒自己
              */
             return true;
         if (ws > 0) {
             /*
              * Predecessor was cancelled. Skip over predecessors and
              * indicate retry.
+             * 如果当前要阻塞的线程节点的前置节点状态大于0说明处于被取消状态
+             * 那么将需要跳过该前置节点继续往前寻找到一个可以唤醒它的节点作为前置节点关联
              */
             do {
                 node.prev = pred = pred.prev;
