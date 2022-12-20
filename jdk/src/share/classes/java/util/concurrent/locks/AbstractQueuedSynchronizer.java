@@ -834,6 +834,7 @@ public abstract class AbstractQueuedSynchronizer
              * waitStatus must be 0 or PROPAGATE.  Indicate that we
              * need a signal, but don't park yet.  Caller will need to
              * retry to make sure it cannot acquire before parking.
+             * 将当前阻塞节点的前置节点状态变更为 SIGNAL
              */
             compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
         }
