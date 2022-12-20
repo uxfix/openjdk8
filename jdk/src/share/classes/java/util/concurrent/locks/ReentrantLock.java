@@ -129,15 +129,20 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         final boolean nonfairTryAcquire(int acquires) {
             final Thread current = Thread.currentThread();
             int c = getState();
-            if (c == 0) {
+            if (c == 0) { // 如果当前 AQS 的 state 等于0,说明锁没有线程被持有
+                // 那么就尝试使用 CAS 获取锁
                 if (compareAndSetState(0, acquires)) {
                     setExclusiveOwnerThread(current);
                     return true;
                 }
             }
+            // 如果当前的线程与持有锁线程是同一个
             else if (current == getExclusiveOwnerThread()) {
+                // 则将 AQS 的state 加上 acquires
+                // 支持锁的重入
                 int nextc = c + acquires;
                 if (nextc < 0) // overflow
+                    // 检查锁的重入次数是否达到 int 最大值已经溢出
                     throw new Error("Maximum lock count exceeded");
                 setState(nextc);
                 return true;
@@ -203,9 +208,13 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * acquire on failure.
          */
         final void lock() {
+            // 使用CAS将 AbstractQueuedSynchronizer类的 state 属性从0修改为1
+            // 如果CAS修改成功说明获取锁成功
             if (compareAndSetState(0, 1))
+                // 设置当前锁的持有线程为自己
                 setExclusiveOwnerThread(Thread.currentThread());
             else
+                // 获取锁失败流程
                 acquire(1);
         }
 

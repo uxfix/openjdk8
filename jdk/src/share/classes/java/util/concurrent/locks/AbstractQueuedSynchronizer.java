@@ -384,15 +384,22 @@ public abstract class AbstractQueuedSynchronizer
         static final Node EXCLUSIVE = null;
 
         /** waitStatus value to indicate thread has cancelled */
+        // 表示当前的线程被取消
         static final int CANCELLED =  1;
+
         /** waitStatus value to indicate successor's thread needs unparking */
+        // 表示当前节点的后继节点包含的线程需要运行，也就是unpark被唤醒
         static final int SIGNAL    = -1;
+
         /** waitStatus value to indicate thread is waiting on condition */
+        // 表示当前节点在等待condition，也就是在condition队列中
         static final int CONDITION = -2;
+
         /**
          * waitStatus value to indicate the next acquireShared should
          * unconditionally propagate
          */
+        // 表示当前场景下后续的acquireShared能够得以执行
         static final int PROPAGATE = -3;
 
         /**
@@ -563,6 +570,7 @@ public abstract class AbstractQueuedSynchronizer
      */
     protected final boolean compareAndSetState(int expect, int update) {
         // See below for intrinsics setup to support this
+        // stateOffset 属性 state的对象内存地址偏移量
         return unsafe.compareAndSwapInt(this, stateOffset, expect, update);
     }
 
@@ -581,13 +589,17 @@ public abstract class AbstractQueuedSynchronizer
      * @return node's predecessor
      */
     private Node enq(final Node node) {
-        for (;;) {
+        for (;;) { // 注意这里会不断循环CAS 尾插确保每个节点都能入队完成
             Node t = tail;
             if (t == null) { // Must initialize
+                // 初始化队列,创建一个空的节点作为头节点
                 if (compareAndSetHead(new Node()))
+                    // 并将尾节点也指向这个空的头节点
                     tail = head;
             } else {
+                // 将新加入的节点前置指针指向尾节点
                 node.prev = t;
+                // 然后使用CAS修改尾结点指向最新加的参数node节点,来达到尾插入队的操作
                 if (compareAndSetTail(t, node)) {
                     t.next = node;
                     return t;
@@ -603,16 +615,20 @@ public abstract class AbstractQueuedSynchronizer
      * @return the new node
      */
     private Node addWaiter(Node mode) {
+        // 将节点类型与当前线程引用封装成一个Node 节点对象
         Node node = new Node(Thread.currentThread(), mode);
         // Try the fast path of enq; backup to full enq on failure
         Node pred = tail;
-        if (pred != null) {
-            node.prev = pred;
-            if (compareAndSetTail(pred, node)) {
-                pred.next = node;
+        if (pred != null) { // 如果pred不等于null,说明这个队列已经有阻塞节点存在了
+            node.prev = pred; // 那么将新加入的节点前置指针指向当前队列的尾部节点,即尾插法
+            if (compareAndSetTail(pred, node)) { // 使用 CAP 将 tail 变更指向为新加入的节点
+                pred.next = node; // 如果变更成功,最后再把新加入的尾节点与它的前置节点关联,形成双向链表
                 return node;
             }
         }
+        // 走到这里的话,有两种情况:
+        // 1.compareAndSetTail 修改尾节点失败
+        // 2.当前队列还是空的
         enq(node);
         return node;
     }
@@ -859,9 +875,13 @@ public abstract class AbstractQueuedSynchronizer
         try {
             boolean interrupted = false;
             for (;;) {
+                // 获取当前节点的前置节点
                 final Node p = node.predecessor();
+                // 如果当前节点的前置节点是头节点的话,会再次尝试获取锁
                 if (p == head && tryAcquire(arg)) {
+                    // 获取锁成功,将当前节点设置为头节点
                     setHead(node);
+                    // 旧的头节点 next 指向引用取消
                     p.next = null; // help GC
                     failed = false;
                     return interrupted;
@@ -1195,7 +1215,9 @@ public abstract class AbstractQueuedSynchronizer
      *        can represent anything you like.
      */
     public final void acquire(int arg) {
+        // tryAcquire(arg) 再次尝试获取锁,返回false则获取锁失败
         if (!tryAcquire(arg) &&
+            // addWaiter(Node.EXCLUSIVE) 将当前线程放入阻塞队列,并表示该节点是以独占模式
             acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
             selfInterrupt();
     }
