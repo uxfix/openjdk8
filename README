@@ -6,7 +6,7 @@ README:
 
   The root repository can be obtained with something like:
     hg clone http://hg.openjdk.java.net/jdk8/jdk8 openjdk8
-  
+
   You can run the get_source.sh script located in the root repository to get
   the other needed repositories:
     cd openjdk8 && sh ./get_source.sh
@@ -17,7 +17,7 @@ README:
   See http://openjdk.java.net/ for more information about OpenJDK.
 
 Simple Build Instructions:
-  
+
   0. Get the necessary system software/packages installed on your system, see
      http://hg.openjdk.java.net/jdk8/jdk8/raw-file/tip/README-builds.html
 
@@ -28,7 +28,7 @@ Simple Build Instructions:
 
   2. Configure the build:
        bash ./configure
-  
+
   3. Build the OpenJDK:
        make all
      The resulting JDK image should be found in build/*/images/j2sdk-image
