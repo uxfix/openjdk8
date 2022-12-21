@@ -151,14 +151,18 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         }
 
         protected final boolean tryRelease(int releases) {
-            int c = getState() - releases;
+            int c = getState() - releases; // 将AQS的state减去参数许可
             if (Thread.currentThread() != getExclusiveOwnerThread())
+                // 判断当前线程是不是持有锁的线程,如果不是则不允许释放许可
                 throw new IllegalMonitorStateException();
-            boolean free = false;
+            boolean free = false; // 释放释放成功
             if (c == 0) {
+                // 释放成功
                 free = true;
+                // 将独占线程指向null,表示当前没有线程持有锁
                 setExclusiveOwnerThread(null);
             }
+            // 设置AQS的state,完成锁的释放
             setState(c);
             return free;
         }
@@ -236,20 +240,26 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         /**
          * Fair version of tryAcquire.  Don't grant access unless
          * recursive call or no waiters or is first.
+         * 公平锁的获取锁的实现方式
          */
         protected final boolean tryAcquire(int acquires) {
             final Thread current = Thread.currentThread();
             int c = getState();
             if (c == 0) {
+                // hasQueuedPredecessors() 如果当前队列为空返回或者当前线程在队列的头部则为 ture
                 if (!hasQueuedPredecessors() &&
+                    // CAS 变更状态获取锁    
                     compareAndSetState(0, acquires)) {
+                    // 获取锁成功,将锁持有线程指向当前线程
                     setExclusiveOwnerThread(current);
                     return true;
                 }
             }
             else if (current == getExclusiveOwnerThread()) {
+                // 锁的重入
                 int nextc = c + acquires;
-                if (nextc < 0)
+                if (nextc < 0) 
+                    // 锁重入次数溢出检查
                     throw new Error("Maximum lock count exceeded");
                 setState(nextc);
                 return true;

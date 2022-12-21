@@ -659,6 +659,7 @@ public abstract class AbstractQueuedSynchronizer
          */
         int ws = node.waitStatus;
         if (ws < 0)
+            // 如果 waitStatus 小于0,CAS设置为0
             compareAndSetWaitStatus(node, ws, 0);
 
         /*
@@ -666,6 +667,8 @@ public abstract class AbstractQueuedSynchronizer
          * just the next node.  But if cancelled or apparently null,
          * traverse backwards from tail to find the actual
          * non-cancelled successor.
+         * 从尾节点开始往前找,找到等于 null 或者等于当前节点的时停止
+         * 变量 s 即指向这个节点的后一个节点
          */
         Node s = node.next;
         if (s == null || s.waitStatus > 0) {
@@ -675,6 +678,7 @@ public abstract class AbstractQueuedSynchronizer
                     s = t;
         }
         if (s != null)
+            // 唤醒找到的这个s节点线程
             LockSupport.unpark(s.thread);
     }
 
@@ -765,20 +769,25 @@ public abstract class AbstractQueuedSynchronizer
         // Skip cancelled predecessors
         Node pred = node.prev;
         while (pred.waitStatus > 0)
+            // 找到node前驱结点中第一个状态小于0的结点，即不为CANCELLED状态的结点
+            // 将其保存到局部变量 pred,并且将当前节点的前置节点指向找到的这个节点
             node.prev = pred = pred.prev;
 
         // predNext is the apparent node to unsplice. CASes below will
         // fail if not, in which case, we lost race vs another cancel
         // or signal, so no further action is necessary.
+        // 找到当前节点的前置节点状态不为CANCELLED状态节点的后置节点
         Node predNext = pred.next;
 
         // Can use unconditional write instead of CAS here.
         // After this atomic step, other Nodes can skip past us.
         // Before, we are free of interference from other threads.
+        // 将当前节点的状态设为取消状态
         node.waitStatus = Node.CANCELLED;
 
-        // If we are the tail, remove ourselves.
+        // 如果当前节点是尾节点,那么将找到的状态不为CANCELLED的前置节点设置为新的尾结点
         if (node == tail && compareAndSetTail(node, pred)) {
+            // 将新的尾节点的后置节点置为null
             compareAndSetNext(pred, predNext, null);
         } else {
             // If successor needs signal, try to set pred's next-link
@@ -788,10 +797,17 @@ public abstract class AbstractQueuedSynchronizer
                 ((ws = pred.waitStatus) == Node.SIGNAL ||
                  (ws <= 0 && compareAndSetWaitStatus(pred, ws, Node.SIGNAL))) &&
                 pred.thread != null) {
+                // pred结点不为头节点
+                // 并且pred结点的状态为SIGNAL或者
+                // pred结点状态小于等于0，并且比较并设置等待状态为SIGNAL成功，并且pred结点所封装的线程不为空
                 Node next = node.next;
+                // 获取当前的节点的后置节点
                 if (next != null && next.waitStatus <= 0)
+                    // 如果当前节点的后置节点不为null,并且waitStatus小于等于0
                     compareAndSetNext(pred, predNext, next);
+                    // 将 pred 的后置节点指向这个当前的节点的后置节点
             } else {
+                // pred结点为头节点
                 unparkSuccessor(node);
             }
 
@@ -854,8 +870,9 @@ public abstract class AbstractQueuedSynchronizer
      * @return {@code true} if interrupted
      */
     private final boolean parkAndCheckInterrupt() {
+        // 调用 park 暂停当前线程
         LockSupport.park(this);
-        return Thread.interrupted();
+        return Thread.interrupted(); // 当前线程是否已被中断，并清除中断标记位
     }
 
     /*
@@ -891,7 +908,9 @@ public abstract class AbstractQueuedSynchronizer
                     failed = false;
                     return interrupted;
                 }
+                // shouldParkAfterFailedAcquire(p, node) 检查变更为当前的前置节点 waitStatus 变更为 SIGNAL
                 if (shouldParkAfterFailedAcquire(p, node) &&
+                    //  调用park阻塞当前线程,并清楚中断标记位
                     parkAndCheckInterrupt())
                     interrupted = true;
             }
@@ -1286,8 +1305,10 @@ public abstract class AbstractQueuedSynchronizer
      */
     public final boolean release(int arg) {
         if (tryRelease(arg)) {
+            // 释放锁成功
             Node h = head;
             if (h != null && h.waitStatus != 0)
+                // 唤醒头结点的后继节点
                 unparkSuccessor(h);
             return true;
         }
@@ -1544,6 +1565,7 @@ public abstract class AbstractQueuedSynchronizer
         Node h = head;
         Node s;
         return h != t &&
+                // 队列为空或者当前队列第一个节点的线程为当前线程则返回 ture
             ((s = h.next) == null || s.thread != Thread.currentThread());
     }
 
