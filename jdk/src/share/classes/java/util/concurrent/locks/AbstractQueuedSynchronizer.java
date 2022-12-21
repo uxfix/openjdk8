@@ -872,7 +872,8 @@ public abstract class AbstractQueuedSynchronizer
     private final boolean parkAndCheckInterrupt() {
         // 调用 park 暂停当前线程
         LockSupport.park(this);
-        return Thread.interrupted(); // 当前线程是否已被中断，并清除中断标记位
+        // 返回当前线程的中断标记位，并清除中断标记位
+        return Thread.interrupted(); 
     }
 
     /*
@@ -890,7 +891,7 @@ public abstract class AbstractQueuedSynchronizer
      *
      * @param node the node
      * @param arg the acquire argument
-     * @return {@code true} if interrupted while waiting
+     * @return {@code true} if interrupted while waiting 返回是否被打断过
      */
     final boolean acquireQueued(final Node node, int arg) {
         boolean failed = true;
@@ -910,8 +911,9 @@ public abstract class AbstractQueuedSynchronizer
                 }
                 // shouldParkAfterFailedAcquire(p, node) 检查变更为当前的前置节点 waitStatus 变更为 SIGNAL
                 if (shouldParkAfterFailedAcquire(p, node) &&
-                    //  调用park阻塞当前线程,并清楚中断标记位
+                    //  调用park阻塞当前线程,返回中断标记位并清除
                     parkAndCheckInterrupt())
+                    // 表示被中断过
                     interrupted = true;
             }
         } finally {
@@ -939,10 +941,12 @@ public abstract class AbstractQueuedSynchronizer
                 }
                 if (shouldParkAfterFailedAcquire(p, node) &&
                     parkAndCheckInterrupt())
+                    // 被中断的话,直接抛异常不再park等待
                     throw new InterruptedException();
             }
         } finally {
             if (failed)
+                // 最后对取消的节点进行释放和队列的修复
                 cancelAcquire(node);
         }
     }
@@ -957,26 +961,37 @@ public abstract class AbstractQueuedSynchronizer
     private boolean doAcquireNanos(int arg, long nanosTimeout)
             throws InterruptedException {
         if (nanosTimeout <= 0L)
+            // 如果等待锁时间释放小于等于0,则直接返回
             return false;
+        // 当前系统纳秒时间+锁等待时间等于这个锁在未来那个时间点到期
         final long deadline = System.nanoTime() + nanosTimeout;
+        // 加入等待队列
         final Node node = addWaiter(Node.EXCLUSIVE);
         boolean failed = true;
         try {
             for (;;) {
                 final Node p = node.predecessor();
+                // 判断当前节点是否的前置节点是否为头节点
+                // 如果是再次尝试获取一次锁
                 if (p == head && tryAcquire(arg)) {
                     setHead(node);
                     p.next = null; // help GC
                     failed = false;
+                    // 获取锁成功
                     return true;
                 }
                 nanosTimeout = deadline - System.nanoTime();
-                if (nanosTimeout <= 0L)
+                if (nanosTimeout <= 0L) // 在park前再次判断等待时间是否已经到期
                     return false;
+                // shouldParkAfterFailedAcquire(p, node) park当前线程前需要保证它的前置节点的 waitStatus 等于 SIGNAL
                 if (shouldParkAfterFailedAcquire(p, node) &&
+                    // 判断当前剩余等待时间是否大于预设的 spinForTimeoutThreshold
+                    // 如果比这个值小,说明剩余等待时间使用自旋会更好一些,而不进入park流程    
                     nanosTimeout > spinForTimeoutThreshold)
+                    // park 指定纳秒的时间
                     LockSupport.parkNanos(this, nanosTimeout);
                 if (Thread.interrupted())
+                    // 判断是否有被中断过
                     throw new InterruptedException();
             }
         } finally {
@@ -1243,6 +1258,7 @@ public abstract class AbstractQueuedSynchronizer
         if (!tryAcquire(arg) &&
             // addWaiter(Node.EXCLUSIVE) 将当前线程放入阻塞队列,并表示该节点是以独占模式
             acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+            // 当获取锁失败且被中断过时会进入到这里执行
             selfInterrupt();
     }
 
@@ -1263,8 +1279,11 @@ public abstract class AbstractQueuedSynchronizer
     public final void acquireInterruptibly(int arg)
             throws InterruptedException {
         if (Thread.interrupted())
+            // 如果当前线程被中断了执行抛异常,并清除中断标记
             throw new InterruptedException();
+        // 尝试获取一次锁,返回false表示获取锁失败
         if (!tryAcquire(arg))
+            // 获取锁失败流程
             doAcquireInterruptibly(arg);
     }
 
@@ -1288,8 +1307,11 @@ public abstract class AbstractQueuedSynchronizer
     public final boolean tryAcquireNanos(int arg, long nanosTimeout)
             throws InterruptedException {
         if (Thread.interrupted())
+            // 如果被中断了,抛出异常
             throw new InterruptedException();
+        // tryAcquire(arg) 尝试获取一次锁,返回false获取锁失败
         return tryAcquire(arg) ||
+            // 获取锁失败流程
             doAcquireNanos(arg, nanosTimeout);
     }
 

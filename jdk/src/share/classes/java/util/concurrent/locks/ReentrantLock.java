@@ -458,6 +458,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      */
     public boolean tryLock(long timeout, TimeUnit unit)
             throws InterruptedException {
+        // 将时间转换为纳秒
         return sync.tryAcquireNanos(1, unit.toNanos(timeout));
     }
 
