@@ -203,22 +203,29 @@ public class CyclicBarrier {
         try {
             final Generation g = generation;
 
-            if (g.broken)
+            if (g.broken) // 屏障被破坏，抛出异常
                 throw new BrokenBarrierException();
 
-            if (Thread.interrupted()) {
+            if (Thread.interrupted()) { // 检查当前线程是否被中断了
+                // 标记当前屏障已被损坏，并且唤醒所有的线程
+                // 并且重置 parties 为初始值
                 breakBarrier();
                 throw new InterruptedException();
             }
 
             int index = --count;
             if (index == 0) {  // tripped
+                // 如何count等于0,说明所有线程都已经到达屏障
                 boolean ranAction = false;
                 try {
                     final Runnable command = barrierCommand;
+                    // 判断是否有任务可以执行
                     if (command != null)
                         command.run();
                     ranAction = true;
+                    // 唤醒所有条件队列的线程
+                    // 并且重置 parties 为初始值
+                    // 重置 Generation
                     nextGeneration();
                     return 0;
                 } finally {
@@ -230,9 +237,10 @@ public class CyclicBarrier {
             // loop until tripped, broken, interrupted, or timed out
             for (;;) {
                 try {
-                    if (!timed)
+                    if (!timed) // 如果 timed 等于 false,说明无期限等待,那么简单的调用 await() 阻塞就行了
                         trip.await();
                     else if (nanos > 0L)
+                        // 设置等待指定时长的
                         nanos = trip.awaitNanos(nanos);
                 } catch (InterruptedException ie) {
                     if (g == generation && ! g.broken) {
@@ -276,8 +284,12 @@ public class CyclicBarrier {
      */
     public CyclicBarrier(int parties, Runnable barrierAction) {
         if (parties <= 0) throw new IllegalArgumentException();
+        //parties表示屏障拦截的线程数量，每个线程调用 await 方法告诉 CyclicBarrier
+        // 我已经到达了屏障，然后当前线程被阻塞。
         this.parties = parties;
+        // count 对parties副本的拷贝记录,用于重置
         this.count = parties;
+        // 当最后一个线程到达屏障时执行这个任务
         this.barrierCommand = barrierAction;
     }
 
@@ -359,6 +371,7 @@ public class CyclicBarrier {
      */
     public int await() throws InterruptedException, BrokenBarrierException {
         try {
+            // 调用 dowait 表示无期限的等待
             return dowait(false, 0L);
         } catch (TimeoutException toe) {
             throw new Error(toe); // cannot happen
