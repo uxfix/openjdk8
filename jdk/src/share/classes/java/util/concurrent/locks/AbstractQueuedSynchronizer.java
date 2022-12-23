@@ -726,7 +726,9 @@ public abstract class AbstractQueuedSynchronizer
      * @param propagate the return value from a tryAcquireShared
      */
     private void setHeadAndPropagate(Node node, int propagate) {
+        // 将同步队列的头结点保存到临时变量 h
         Node h = head; // Record old head for check below
+        // 将当前参数 node 节点设置为头结点
         setHead(node);
         /*
          * Try to signal next queued node if:
@@ -746,8 +748,11 @@ public abstract class AbstractQueuedSynchronizer
          */
         if (propagate > 0 || h == null || h.waitStatus < 0 ||
             (h = head) == null || h.waitStatus < 0) {
+            // 获取参数 node 节点的下一个节点
             Node s = node.next;
             if (s == null || s.isShared())
+                // 如果节点 s 等于 null,或者s是一个共享节点
+                // 则进入唤醒后继节点的流程
                 doReleaseShared();
         }
     }
@@ -1038,14 +1043,19 @@ public abstract class AbstractQueuedSynchronizer
      */
     private void doAcquireSharedInterruptibly(int arg)
         throws InterruptedException {
+        // 将当前线程设置为共享节点入同步队列
         final Node node = addWaiter(Node.SHARED);
         boolean failed = true;
         try {
             for (;;) {
+                // 获取当前线程节点的前置节点
                 final Node p = node.predecessor();
                 if (p == head) {
+                    // 如果它的前置节点是头节点的话
+                    // 则会再次尝试获取一次许可证
                     int r = tryAcquireShared(arg);
-                    if (r >= 0) {
+                    if (r >= 0) { // 如果返回值 r 大于等于0说明获取许可证成功
+                        // 设置当前节点为头结点
                         setHeadAndPropagate(node, r);
                         p.next = null; // help GC
                         failed = false;
@@ -1058,6 +1068,7 @@ public abstract class AbstractQueuedSynchronizer
             }
         } finally {
             if (failed)
+                // 如果失败了,取消当前节点,修复同步队列
                 cancelAcquire(node);
         }
     }
@@ -1370,7 +1381,8 @@ public abstract class AbstractQueuedSynchronizer
             throws InterruptedException {
         if (Thread.interrupted())
             throw new InterruptedException();
-        if (tryAcquireShared(arg) < 0)
+        if (tryAcquireShared(arg) < 0) // 尝试获取许可证
+            // 如果获取的许可证小于0,则说明无许可证可使用
             doAcquireSharedInterruptibly(arg);
     }
 
@@ -1409,6 +1421,7 @@ public abstract class AbstractQueuedSynchronizer
      */
     public final boolean releaseShared(int arg) {
         if (tryReleaseShared(arg)) {
+            // 唤醒后继节点
             doReleaseShared();
             return true;
         }

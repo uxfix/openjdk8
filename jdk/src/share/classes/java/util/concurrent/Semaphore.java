@@ -174,23 +174,32 @@ public class Semaphore implements java.io.Serializable {
             return getState();
         }
 
+        /**
+         * 非公平方式获取许可证
+         * @param acquires
+         * @return
+         */
         final int nonfairTryAcquireShared(int acquires) {
-            for (;;) {
+            for (;;) { // 无线循环CAS尝试变更剩余许可证,直到变更成功,或者无剩余许可证时返回
+                // 获取可用的许可证
                 int available = getState();
+                // 将可用许可证减去本次所消耗的许可证得到剩余许可证
                 int remaining = available - acquires;
-                if (remaining < 0 ||
-                    compareAndSetState(available, remaining))
+                if (remaining < 0 || // 如果剩余许可证小于0,说明没有可用的许可证了,直接返回当前的剩余许可证
+                    compareAndSetState(available, remaining)) // 使用CAS变更为最新的剩余许可证
                     return remaining;
             }
         }
 
         protected final boolean tryReleaseShared(int releases) {
             for (;;) {
+                // 获取当前的许可证数量
                 int current = getState();
+                // 当前许可证数量加上需要释放的许可证数量等于最新可用的许可证数量
                 int next = current + releases;
-                if (next < current) // overflow
+                if (next < current) // 溢出检查
                     throw new Error("Maximum permit count exceeded");
-                if (compareAndSetState(current, next))
+                if (compareAndSetState(current, next)) // CAS 修改为最新可用的许可证数量
                     return true;
             }
         }
@@ -240,9 +249,15 @@ public class Semaphore implements java.io.Serializable {
             super(permits);
         }
 
+        /**
+         * 公平的实现方式
+         */
         protected int tryAcquireShared(int acquires) {
             for (;;) {
                 if (hasQueuedPredecessors())
+                    // 检查是否还有其他线程在队列等待
+                    // 如果有则返回-1表示老老实实排队等待去
+                    // 这就是实现公平的方式
                     return -1;
                 int available = getState();
                 int remaining = available - acquires;
