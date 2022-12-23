@@ -170,6 +170,8 @@ public class CountDownLatch {
         }
 
         protected int tryAcquireShared(int acquires) {
+            // 只有当state等于0才返回1,表示允许执行
+            // 负责都一律返回-1表示不允许执行
             return (getState() == 0) ? 1 : -1;
         }
 
@@ -178,7 +180,7 @@ public class CountDownLatch {
             for (;;) {
                 int c = getState();
                 if (c == 0)
-                    return false;
+                    return false; // 当state等于0时,表允许唤醒后继节点执行
                 int nextc = c-1;
                 if (compareAndSetState(c, nextc))
                     return nextc == 0;
